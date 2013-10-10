@@ -1,5 +1,4 @@
 UPenn-ARC
 =========
 
-Repo for UPenn ARC
-HELLO EVERYBARDY!!
+Repo for UPenn ARC not... hahahah
