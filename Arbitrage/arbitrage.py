@@ -109,13 +109,15 @@ def run():
 
     fout.close()
 
+  
     buy_exchange, sell_exchange = None, None
+#*********** SEE ME!!!! why bother with such a long if statement when you can just compare max/min? (Spriha)
     if len(arbitrage_orders['to_sell']) > 0 and \
             arbitrage_orders['to_sell'][-1]['cumulative_ppc_volume'] >= \
             arbitrage_orders['to_buy'][-1]['cumulative_ppc_volume']:
         ppc_volume = arbitrage_orders['to_buy'][-1]['cumulative_ppc_volume']
-        for order in arbitrage_orders['to_sell']:
-            if order['cumulative_ppc_volume'] >= ppc_volume:
+        for order in arbitrage_orders['to_sell']: #explain, didn't quite get this part here (Spriha)
+            if order['cumulative_ppc_volume'] >= ppc_volume: #if the ask order (in terms of ppc) is more than the bid order
                 sell_price = order['price']
                 break
         #highest bid price
