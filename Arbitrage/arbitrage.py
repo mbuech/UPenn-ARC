@@ -7,16 +7,17 @@ import requests
 from xml.etree import ElementTree
 from datetime import datetime
 import os
+import time
 
 from vircurex import Account
 from vircurex import Pair
 import btc_e_api
+import mcxnowapi
 
 def run():
     #data analysis
-    #btce
     order_book = {'buy':[],'sell':[]}
-
+    #btce
     btce_ppc_btc_url = "https://btc-e.com/api/2/ppc_btc/depth"
     btce_depth_info = requests.get(btce_ppc_btc_url).json()
     for key, values in btce_depth_info.iteritems():
@@ -35,9 +36,7 @@ def run():
                     'exchange': 'btce', \
                     'type': 'buy'})
 
-    #todo: implement mcxnow trading before collecting data
     #mcxnow
-    '''
     mcxnow_ppc_btc_url = "https://mcxnow.com/orders?cur=PPC"
     mcxnow_depth_info = requests.get(mcxnow_ppc_btc_url)
     root = ElementTree.fromstring(mcxnow_depth_info.content)
@@ -62,7 +61,6 @@ def run():
                         'type': 'sell'})
                 except:
                     pass
-    '''
 
     #vircurex
     orderbook = Pair("ppc_btc").orderbook
@@ -108,8 +106,13 @@ def run():
         fout.write("\n")
 
     fout.close()
+<<<<<<< HEAD
 
   
+=======
+    
+    #todo: generalize for > 2 exchanges
+>>>>>>> 927d60ceb0c41692668813df33ab92c6e38c9d27
     buy_exchange, sell_exchange = None, None
 #*********** SEE ME!!!! why bother with such a long if statement when you can just compare max/min? (Spriha)
     if len(arbitrage_orders['to_sell']) > 0 and \
@@ -147,6 +150,13 @@ def run():
     #mcxnow
     if buy_exchange != None and sell_exchange != None:
         #get account balances
+        #mcxnow
+        mcxnow_user = os.environ['mcxnow_user']
+        mcxnow_pass = os.environ['mcxnow_pass']
+        S = mcxnowapi.McxNowSession(mcxnow_user, mcxnow_pass)
+        mcxnow_user_details = S.GetUserDetails()
+        mcxnow_ppc_balance = [i[1] for i in mcxnow_user_details if i[0] == 'PPC'][0]
+        mcxnow_btc_balance = [i[1] for i in mcxnow_user_details if i[0] == 'BTC'][0]
         #vircurex
         vircurex_key = os.environ['vircurex_key']
         vircurex_user = os.environ['vircurex_user']
@@ -163,28 +173,48 @@ def run():
         except:
             nonce = 1
         btce = btc_e_api.API(btce_access_key,\
-            btce_secret_key, nonce=nonce)
+            btce_secret_access_key, nonce=nonce)
         new_nonce_file = open('nonce.txt', 'w')
         new_nonce_file.write(str(nonce + 1))
         new_nonce_file.close()
         response = btce.get_info()
+        print response
         btce_ppc_balance = response["return"]["funds"]["ppc"]
         btce_btc_balance = response["return"]["funds"]["btc"] 
 
         #todo: generalize for > 2 exchanges
         #calculate new ppc volume
+        #vircurex and btce
+        '''
         if buy_exchange == 'vircurex':
             ppc_volume_buy_limit = float(vircurex_btc_balance) / float(buy_price)
             ppc_volume = min(btce_ppc_balance, ppc_volume, ppc_volume_buy_limit)
         elif sell_exchange == 'vircurex':
             ppc_volume_buy_limit = float(btce_btc_balance) / float(buy_price)
             ppc_volume = min(vircurex_ppc_balance, ppc_volume, ppc_volume_buy_limit)
-
+        '''
+        #mcxnow and btce
+        if buy_exchange == 'mcxnow':
+            ppc_volume_buy_limit = float(mcxnow_btc_balance) / float(buy_price)
+            ppc_volume = min(btce_ppc_balance, ppc_volume, ppc_volume_buy_limit)
+        elif sell_exchange == 'mcxnow':
+            ppc_volume_buy_limit = float(btce_btc_balance) / float(buy_price)
+            ppc_volume = min(mcxnow_ppc_balance, ppc_volume, ppc_volume_buy_limit)
+        #truncate ppc_volume to second decimal place
+        ppc_volume = '%.2f' % ppc_volume
         print ppc_volume
 
-        #todo: implement mcxnow trading
+        #mcxnow
         if buy_exchange == 'mcxnow' or sell_exchange == 'mcxnow':
-            pass
+            S = mcxnowapi.McxNowSession(mcxnow_user, mcxnow_pass)
+            if buy_exchange == 'mcxnow':
+                order = S.SendBuyOrder('PPC', ppc_volume, buy_price, 0)
+            if sell_exchange == 'mcxnow':
+                order = S.SendSellOrder('PPC', ppc_volume, sell_price, 0)
+            print order, S.ErrorCode
+            if order == 1:                
+                result = S.ExecuteOrder('PPC', S.Return[0])
+                print result, S.ErrorCode
 
         #vircurex
         if buy_exchange == 'vircurex' or sell_exchange == 'vircurex':
@@ -205,7 +235,30 @@ def run():
             print result
 
 if __name__ == '__main__':
-    run()
+    #starting balances
+    #btce
+    #btc=1.01417533
+    #ppc=1355.91890139
+    #mcxnow
+    #btc=1.16494221
+    #ppc=926.749068
+    #exchange rate (according to coinmarketcap.com):
+    #btc-usd=147.17
+    #ppc-usd=0.32
+    while True:
+        print "new poll"
+        try:
+            run()
+            time.sleep(15.0)
+        except:
+            print "Exception"
+            nonce_file = open('nonce.txt', 'r')
+            nonce = int(nonce_file.readline().strip())
+            nonce_file.close()
+            new_nonce_file = open('nonce.txt', 'w')
+            new_nonce_file.write(str(nonce + 1))
+            new_nonce_file.close()
+            time.sleep(60.0)
 
 
 
