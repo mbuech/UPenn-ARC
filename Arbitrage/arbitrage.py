@@ -235,16 +235,6 @@ def run():
             print result
 
 if __name__ == '__main__':
-    #starting balances
-    #btce
-    #btc=1.01417533
-    #ppc=1355.91890139
-    #mcxnow
-    #btc=1.16494221
-    #ppc=926.749068
-    #exchange rate (according to coinmarketcap.com):
-    #btc-usd=147.17
-    #ppc-usd=0.32
     while True:
         print "new poll"
         try:
